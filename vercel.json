@@ -1,16 +1,4 @@
 {
-  "rewrites": [
-    {
-      "source": "/:path*",
-      "destination": "https://dedw231-new-api.hf.space/:path*"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/:path*",
-      "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" }
-      ]
-    }
-  ]
+  "buildCommand": "",
+  "outputDirectory": "public"
 }
