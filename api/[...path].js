@@ -1,52 +1,46 @@
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function handler(request) {
+export default async function handler(req, res) {
   const targetHost = 'dedw231-new-api.hf.space';
-  const url = new URL(request.url);
   
-  // 构建目标 URL
-  const targetUrl = `https://${targetHost}${url.pathname}${url.search}`;
+  // 获取路径
+  const path = req.url || '/';
+  const targetUrl = `https://${targetHost}${path}`;
 
   // 构建请求头
-  const headers = new Headers();
-  for (const [key, value] of request.headers.entries()) {
-    if (!key.startsWith('x-') && key !== 'host' && key !== 'connection') {
-      headers.set(key, value);
-    }
-  }
-  headers.set('Host', targetHost);
-  headers.set('Origin', `https://${targetHost}`);
+  const headers = { ...req.headers };
+  delete headers.host;
+  delete headers.connection;
+  headers.host = targetHost;
+  headers.origin = `https://${targetHost}`;
 
   try {
     const response = await fetch(targetUrl, {
-      method: request.method,
+      method: req.method,
       headers: headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : null,
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
     });
 
-    // 构建响应头
-    const responseHeaders = new Headers(response.headers);
-    responseHeaders.delete('content-security-policy');
-    responseHeaders.delete('x-frame-options');
-    responseHeaders.set('Access-Control-Allow-Origin', '*');
-    responseHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    responseHeaders.set('Access-Control-Allow-Headers', '*');
+    // 设置响应头
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
+    // 转发响应头
+    for (const [key, value] of response.headers.entries()) {
+      if (key !== 'content-encoding' && key !== 'transfer-encoding' && key !== 'content-security-policy') {
+        res.setHeader(key, value);
+      }
+    }
 
     // 处理重定向
     const location = response.headers.get('location');
     if (location) {
-      const newLocation = location.replace(`https://${targetHost}`, url.origin);
-      responseHeaders.set('location', newLocation);
+      const newLocation = location.replace(`https://${targetHost}`, `https://${req.headers.host}`);
+      res.setHeader('location', newLocation);
     }
 
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
+    const body = await response.text();
+    res.status(response.status).send(body);
   } catch (error) {
-    return new Response('Proxy Error: ' + error.message, { status: 502 });
+    res.status(502).send('Proxy Error: ' + error.message);
   }
 }
