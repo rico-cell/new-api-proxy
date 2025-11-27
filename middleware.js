@@ -1,5 +1,3 @@
-import { NextResponse } from 'next/server';
-
 export const config = {
   matcher: '/:path*',
 };
@@ -31,11 +29,11 @@ export default async function middleware(request) {
       responseHeaders.set('location', location.replace(`https://${targetHost}`, url.origin));
     }
 
-    return new NextResponse(response.body, {
+    return new Response(response.body, {
       status: response.status,
       headers: responseHeaders,
     });
   } catch (error) {
-    return new NextResponse('Proxy Error: ' + error.message, { status: 502 });
+    return new Response('Proxy Error: ' + error.message, { status: 502 });
   }
 }
